@@ -19,7 +19,7 @@ namespace StarGambitTest
         public void GetGameMaster()
         {
             const string gm = "EXPECTED_GAMEMASTER";
-            var game = new Game(new MockUser(gm));
+            IGame game = new Game(new MockUser(gm));
             Assert.That(game.GameMaster.Name, Is.EqualTo(gm));
         }
 
@@ -92,7 +92,7 @@ namespace StarGambitTest
             playerADeck.Edge = player1Edge;
 
             gameState.PlayersStates[new MockUser(player1)] = playerADeck;
-            var game = new Game(gameState);
+            IGame game = new Game(gameState);
 
             // ACT
             var jokerDrawn = game.Distribute(new MockUser(player1), 1);
@@ -134,7 +134,7 @@ namespace StarGambitTest
                 new Card(Card.ValueEnum._3, Card.ColorEnum.Club),
             }));
             playerBDeck.Edge = player2Edge;
-            var game = new Game(gameState);
+            IGame game = new Game(gameState);
 
             gameState.PlayersStates[new MockUser(player2)] = playerBDeck;
             var jokerDrawn = game.Distribute(new MockUser(player2), 1);
@@ -179,7 +179,7 @@ namespace StarGambitTest
             }));
             var nbCard = playerADeck.Deck.Cards.Count;
             gameState.PlayersStates[new MockUser(player1)] = playerADeck;
-            var game = new Game(gameState);
+            IGame game = new Game(gameState);
 
             // ACT
             var val = game.PlayDeck(new MockUser(player1), Card.ColorEnum.Diamond);
@@ -261,7 +261,7 @@ namespace StarGambitTest
             gameState.PlayersStates[new MockUser(player1)] = playerADeck;
             gameState.PlayersStates[new MockUser(player2)] = playerBDeck;
             gameState.PlayersStates[new MockUser(player3)] = playerCDeck;
-            var game = new Game(gameState);
+            IGame game = new Game(gameState);
 
             // ACT
             var jokerDrawn = game.Distribute(new MockUser(player1), 1);
@@ -348,7 +348,7 @@ namespace StarGambitTest
             });
             var nbCard = playerADeck.Deck.Cards.Count;
             gameState.PlayersStates[new MockUser(player1)] = playerADeck;
-            var game = new Game(gameState);
+            IGame game = new Game(gameState);
 
             // ACT
             var val = game.PlayHand(new MockUser(player1), Card.ColorEnum.Diamond, 0);

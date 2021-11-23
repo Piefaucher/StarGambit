@@ -66,16 +66,16 @@ namespace StarGambit.Game.Impl
         public IEnumerable<Card> ShowHand(IPlayer user)
         {
             if (!GameState.PlayersStates.ContainsKey(user))
-                throw new Exception("User not found");
+                throw new Exception("Player does not exist");
 
             return GameState.PlayersStates[user].Hand;
         }
 
-        public void Discard(IPlayer user, IEnumerable<int> cardPosition)
+        public IEnumerable<Card> Discard(IPlayer user, IEnumerable<int> cardPosition)
         {
             if (!GameState.PlayersStates.TryGetValue(user, out var playerState))
             {
-                throw new Exception("User does not exist");
+                throw new Exception("Player does not exist");
             }
             if (cardPosition.Any(pos => pos < 0 || pos >= playerState.Hand.Count))
             {
@@ -90,22 +90,24 @@ namespace StarGambit.Game.Impl
             foreach (var pos in sortedPosition)
             {
                 // PUT THE CARD INTO FUNGUS NETWORK IN ORDER TO AVOID TO BE DRAWN
-                playerState.FungusNetwork.Add(playerState.Hand[pos]);
+                var card = playerState.Hand[pos];
+                playerState.FungusNetwork.Add(card);
                 playerState.Hand.RemoveAt(pos);
+                yield return card;
             }
         }
 
-        public bool Refill(IPlayer user)
+        public bool Refill(IPlayer user, bool force = false)
         {
             if (!GameState.PlayersStates.TryGetValue(user, out var playerState))
             {
-                throw new Exception("User does not exist");
+                throw new Exception("Player does not exist");
             }
             if (playerState.Edge <= 0)
             {
                 throw new Exception("Edge is not defined");
             }
-            if (!playerState.JokerDrawn)
+            if (!playerState.JokerDrawn && !force)
             {
                 throw new Exception("You need to draw a Joker to refill your hand");
             }
@@ -132,7 +134,7 @@ namespace StarGambit.Game.Impl
         {
             if (!GameState.PlayersStates.TryGetValue(player, out var playerState))
             {
-                throw new Exception("User does not exist");
+                throw new Exception("Player does not exist");
             }
             var card = playerState.Deck.Draw();
             playerState.Discard.Add(card);
@@ -159,7 +161,7 @@ namespace StarGambit.Game.Impl
         {
             if (!GameState.PlayersStates.TryGetValue(player, out var playerState))
             {
-                throw new Exception("User does not exist");
+                throw new Exception("Player does not exist");
             }
             if (pos < 0 || pos >= playerState.Hand.Count)
             {
@@ -277,13 +279,26 @@ namespace StarGambit.Game.Impl
         {
             if (!GameState.PlayersStates.TryGetValue(player, out var playerState))
             {
-                throw new Exception("User does not exist");
+                throw new Exception("Player does not exist");
             }
             if (i <= 0 || i > 52)
             {
                 throw new Exception("Edge not in range");
             }
             playerState.Edge = i;
+        }
+
+        public void SetEdge(IPlayer player, int edge)
+        {
+            if (!GameState.PlayersStates.TryGetValue(player, out var playerState))
+            {
+                throw new Exception("Player does not exist");
+            }
+            if (edge<=0 || edge > 50)
+            {
+                throw new Exception("Edge not in range");
+            }
+            playerState.Edge = edge;
         }
     }
 }

@@ -9,16 +9,16 @@ namespace StarGambit.Game
         IEnumerable<PlayerInfo> GeneratePlayersInfos();
 
         IEnumerable<IPlayer> AddUsers(IEnumerable<IPlayer> users);
+        void SetEdge(IPlayer player, int edge);
+        bool Distribute(IPlayer player, int numberCard);
 
-        bool Distribute(IPlayer user, int numberCard);
+        IEnumerable<Card> Discard(IPlayer player, IEnumerable<int> cardPosition);
 
-        void Discard(IPlayer user, IEnumerable<int> cardPosition);
+        bool Refill(IPlayer player, bool force = false);
 
-        bool Refill(IPlayer user);
+        IEnumerable<Card> ShowHand(IPlayer player);
 
-        IEnumerable<Card> ShowHand(IPlayer user);
-
-        Tuple<int, IEnumerable<Card>> PlayDeck(IPlayer user, Card.ColorEnum color);
+        Tuple<int, IEnumerable<Card>> PlayDeck(IPlayer player, Card.ColorEnum color);
         Tuple<int, IEnumerable<Card>> PlayHand(IPlayer player, Card.ColorEnum color, int pos);
         Tuple<int, IEnumerable<Card>> PlayDeckWithDiscard(IPlayer player, Card.ColorEnum color, int pos);
     }

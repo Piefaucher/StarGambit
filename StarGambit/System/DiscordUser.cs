@@ -1,7 +1,6 @@
 ﻿using Discord.WebSocket;
 using StarGambit.Game;
 using System;
-using System.Diagnostics.CodeAnalysis;
 
 namespace StarGambit.System
 {
