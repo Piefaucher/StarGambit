@@ -28,6 +28,14 @@ namespace StarGambit.Game.Impl
             Deck = deck;
         }
 
+        internal PlayerState(Deck deck, IEnumerable<Card> handCards)
+        {
+            Hand = handCards.ToList();
+            Discard = new List<Card>();
+            FungusNetwork = new List<Card>();
+            Deck = deck;
+        }
+
         public PlayerState()
         {
             JokerDrawn = false;

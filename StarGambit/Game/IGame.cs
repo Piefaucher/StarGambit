@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace StarGambit.Game
 {
@@ -16,6 +17,10 @@ namespace StarGambit.Game
         bool Refill(IPlayer user);
 
         IEnumerable<Card> ShowHand(IPlayer user);
+
+        Tuple<int, IEnumerable<Card>> PlayDeck(IPlayer user, Card.ColorEnum color);
+        Tuple<int, IEnumerable<Card>> PlayHand(IPlayer player, Card.ColorEnum color, int pos);
+        Tuple<int, IEnumerable<Card>> PlayDeckWithDiscard(IPlayer player, Card.ColorEnum color, int pos);
     }
 
     public class PlayerInfo

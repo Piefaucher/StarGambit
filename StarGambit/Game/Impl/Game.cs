@@ -47,7 +47,7 @@ namespace StarGambit.Game.Impl
                 GameState.PlayersStates[user] = state;
             }
             var jokerDrawn = false;
-            for (int i = 0; i < numberCard; i++)
+            for (int i = 0; i < Math.Min(numberCard, state.Deck.Cards.Count()); i++)
             {
                 var card = state.Deck.Draw();
                 if (card.Color == Card.ColorEnum.Joker)
@@ -105,6 +105,10 @@ namespace StarGambit.Game.Impl
             {
                 throw new Exception("Edge is not defined");
             }
+            if (!playerState.JokerDrawn)
+            {
+                throw new Exception("You need to draw a Joker to refill your hand");
+            }
             var playerHandSize = playerState.Hand.Count();
             if (playerHandSize >= playerState.Edge)
             {
@@ -124,9 +128,135 @@ namespace StarGambit.Game.Impl
             return result;
         }
 
-        internal Tuple<int, IEnumerable<Card>> PlayDeck(IPlayer user, Card.ColorEnum color)
+        public Tuple<int, IEnumerable<Card>> PlayDeck(IPlayer player, Card.ColorEnum color)
         {
-            throw new NotImplementedException();
+            if (!GameState.PlayersStates.TryGetValue(player, out var playerState))
+            {
+                throw new Exception("User does not exist");
+            }
+            var card = playerState.Deck.Draw();
+            playerState.Discard.Add(card);
+            return PlayCard(playerState, color, card);
+        }
+
+        public Tuple<int, IEnumerable<Card>> PlayHand(IPlayer player, Card.ColorEnum color, int pos)
+        {
+            if (!GameState.PlayersStates.TryGetValue(player, out var playerState))
+            {
+                throw new Exception("User does not exist");
+            }
+            if (pos < 0 || pos >= playerState.Hand.Count)
+            {
+                throw new Exception("CardOutRange");
+            }
+            var card = playerState.Hand[pos];
+            playerState.Discard.Add(card);
+            playerState.Hand.RemoveAt(pos);
+            return PlayCard(playerState, color, card);
+        }
+
+        public Tuple<int, IEnumerable<Card>> PlayDeckWithDiscard(IPlayer player, Card.ColorEnum color, int pos)
+        {
+            if (!GameState.PlayersStates.TryGetValue(player, out var playerState))
+            {
+                throw new Exception("User does not exist");
+            }
+            if (pos < 0 || pos >= playerState.Hand.Count)
+            {
+                throw new Exception("CardOutRange");
+            }
+            // DISCARD THE SELECTED CARD
+            var discardedCard = playerState.Hand[pos];
+            playerState.Discard.Add(discardedCard);
+            playerState.Hand.RemoveAt(pos);
+            // PLAY FROM DECK AND FORCE COLOR
+            var card = playerState.Deck.Draw();
+            playerState.Discard.Add(card);
+            return PlayCard(playerState, color, card, false, true);
+        }
+
+        private Tuple<int, IEnumerable<Card>> PlayCard(
+            PlayerState state,
+            Card.ColorEnum color,
+            Card card,
+            bool previousGoodColor = false,
+            bool forceGoodColor = false)
+        {
+            var playedCard = new List<Card> { card };
+            if (card.Color == Card.ColorEnum.Joker)
+            {
+                state.JokerDrawn = true;
+                return Tuple.Create<int, IEnumerable<Card>>(-1, playedCard);
+            }
+            var goodColor = card.Color == color || forceGoodColor;
+            var score = ComputeScore(card);
+            if (card.Value == Card.ValueEnum.Jack
+                || card.Value == Card.ValueEnum.Queen
+                || card.Value == Card.ValueEnum.King)
+            {
+                var newCard = state.Deck.Draw();
+                state.Discard.Add(card);
+                playedCard.Add(newCard);
+
+                if (newCard.Color == Card.ColorEnum.Joker)
+                {
+                    state.JokerDrawn = true;
+                    return Tuple.Create<int, IEnumerable<Card>>(-1, playedCard);
+                }
+
+                score += ComputeScore(newCard);
+            }
+            Tuple<int, IEnumerable<Card>> result;
+            if (goodColor && !previousGoodColor)
+            {
+                var newCard = state.Deck.Draw();
+                state.Discard.Add(card);
+                playedCard.Add(newCard);
+
+                // MAKE SECOND DRAW 
+                var secondDraw = PlayCard(state, color, newCard, true);
+                playedCard = playedCard.Union(secondDraw.Item2).ToList();
+                if (secondDraw.Item1 == -1)
+                {// CRITICAL FAILURE
+                    result = Tuple.Create(-1, playedCard.Union(secondDraw.Item2));
+                }
+                else if (newCard.Color == color)
+                {
+                    result = Tuple.Create<int, IEnumerable<Card>>(secondDraw.Item1 + score, playedCard);
+                }
+                else
+                {
+                    result = Tuple.Create<int, IEnumerable<Card>>(Math.Max(secondDraw.Item1, score), playedCard);
+                }
+            }
+            else
+            {
+                result = Tuple.Create<int, IEnumerable<Card>>(score, playedCard.ToList());
+            }
+            return result;
+        }
+
+        private static int ComputeScore(Card card)
+        {
+            switch (card.Value)
+            {
+                case Card.ValueEnum._1: return 1;
+                case Card.ValueEnum._2: return 2;
+                case Card.ValueEnum._3: return 3;
+                case Card.ValueEnum._4: return 4;
+                case Card.ValueEnum._5: return 5;
+                case Card.ValueEnum._6: return 6;
+                case Card.ValueEnum._7: return 7;
+                case Card.ValueEnum._8: return 8;
+                case Card.ValueEnum._9: return 9;
+                case Card.ValueEnum._10: return 10;
+                case Card.ValueEnum.Jack: return 1;
+                case Card.ValueEnum.Queen: return 2;
+                case Card.ValueEnum.King: return 3;
+                default:
+                    throw new NotImplementedException(Enum.GetName(typeof(Card.ValueEnum), card.Value));
+
+            }
         }
 
         public IEnumerable<PlayerInfo> GeneratePlayersInfos()
@@ -143,7 +273,7 @@ namespace StarGambit.Game.Impl
             }
         }
 
-        public void SetUserEdge(int i, IPlayer player)
+        public void SetUserEdge(IPlayer player, int i)
         {
             if (!GameState.PlayersStates.TryGetValue(player, out var playerState))
             {

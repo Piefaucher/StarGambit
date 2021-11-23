@@ -48,6 +48,7 @@ namespace StarGambitTest
 
             // ACT
             var jokerDrawn = game.Distribute(new MockUser(player1), 10);
+            game.SetUserEdge(new MockUser(player1), 10);
             while (jokerDrawn)
             {
                 jokerDrawn = game.Refill(new MockUser(player1));
@@ -89,7 +90,7 @@ namespace StarGambitTest
                 new Card(Card.ValueEnum.JokerA, Card.ColorEnum.Joker)
             }));
             playerADeck.Edge = player1Edge;
-            
+
             gameState.PlayersStates[new MockUser(player1)] = playerADeck;
             var game = new Game(gameState);
 
@@ -142,7 +143,7 @@ namespace StarGambitTest
             Assert.That(jokerDrawn, Is.EqualTo(true));
             game.Discard(new MockUser(player2), new[] { 0 });
             int nRetry = 20;
-            while( game.Refill(new MockUser(player2)) && nRetry-- >=0) { }
+            while (game.Refill(new MockUser(player2)) && nRetry-- >= 0) { }
             var handcase2 = game.ShowHand(new MockUser(player2));
             Assert.That(handcase2.Contains(new Card(Card.ValueEnum._3, Card.ColorEnum.Club)), "Test Fungus network");
         }
@@ -194,7 +195,7 @@ namespace StarGambitTest
             Assert.That(val.Item1, Is.EqualTo(5), "Only one figure reroll");
 
             val = game.PlayDeck(new MockUser(player1), Card.ColorEnum.Diamond);
-            Assert.That(val.Item1, Is.EqualTo(8));
+            Assert.That(val.Item1, Is.EqualTo(8), "Should take the max of 8 diamond and 3 heart");
 
             val = game.PlayDeck(new MockUser(player1), Card.ColorEnum.Diamond);
             Assert.That(val.Item1, Is.EqualTo(13), "Sum");
@@ -247,32 +248,135 @@ namespace StarGambitTest
                 new Card(Card.ValueEnum.JokerA, Card.ColorEnum.Joker),
                 new Card(Card.ValueEnum.Jack, Card.ColorEnum.Diamond),
             }));
-            playerBDeck.Edge = 5;
+            playerBDeck.Edge = 1;
 
             var playerCDeck = new PlayerState(new Deck(new[] {
                 new Card(Card.ValueEnum.Jack, Card.ColorEnum.Diamond),
                 new Card(Card.ValueEnum.JokerA, Card.ColorEnum.Joker),
                 new Card(Card.ValueEnum._2, Card.ColorEnum.Heart),
             }));
-            playerCDeck.Edge = 5;
+            playerCDeck.Edge = 1;
 
             var nbCard = playerADeck.Deck.Cards.Count;
             gameState.PlayersStates[new MockUser(player1)] = playerADeck;
-            gameState.PlayersStates[new MockUser(player1)] = playerBDeck;
-            gameState.PlayersStates[new MockUser(player1)] = playerCDeck;
+            gameState.PlayersStates[new MockUser(player2)] = playerBDeck;
+            gameState.PlayersStates[new MockUser(player3)] = playerCDeck;
             var game = new Game(gameState);
 
             // ACT
             var jokerDrawn = game.Distribute(new MockUser(player1), 1);
             Assert.Throws<Exception>(() => game.Refill(new MockUser(player1)));
-            var val = game.PlayDeck(new MockUser(player1), Card.ColorEnum.Diamond);
+            var val = game.PlayDeck(new MockUser(player1), Card.ColorEnum.Heart);
             Assert.That(val.Item1, Is.EqualTo(-1), "Critical FAILURE");
             game.Discard(new MockUser(player1), new[] { 0 });
             game.Refill(new MockUser(player1));
-            val = game.PlayDeck(new MockUser(player2), Card.ColorEnum.Diamond);
+            val = game.PlayDeck(new MockUser(player2), Card.ColorEnum.Heart);
             Assert.That(val.Item1, Is.EqualTo(-1), "Critical FAILURE");
             val = game.PlayDeck(new MockUser(player3), Card.ColorEnum.Diamond);
             Assert.That(val.Item1, Is.EqualTo(-1), "Critical FAILURE");
+        }
+
+        [Test]
+        public void TestPlayDeckWithDiscard()
+        {// ARRANGE
+            const string gm = "EXPECTED_GAMEMASTER";
+            const string player1 = "PLAYER1";
+            var gameState = new GameState
+            {
+                GameMaster = new MockUser(gm)
+            };
+
+            var playerADeck = new PlayerState(
+                new Deck(
+                    new[] {
+                        new Card(Card.ValueEnum._7, Card.ColorEnum.Heart),
+                        new Card(Card.ValueEnum._6, Card.ColorEnum.Diamond),
+                        new Card(Card.ValueEnum._2, Card.ColorEnum.Heart),
+                        new Card(Card.ValueEnum._10, Card.ColorEnum.Heart),
+                    }),
+                new[]{
+                    new Card(Card.ValueEnum._2, Card.ColorEnum.Club),
+                    new Card(Card.ValueEnum.Jack, Card.ColorEnum.Club),
+                    new Card(Card.ValueEnum.Queen, Card.ColorEnum.Spade),
+                    new Card(Card.ValueEnum._8, Card.ColorEnum.Diamond),
+                    new Card(Card.ValueEnum._7, Card.ColorEnum.Diamond),
+                    new Card(Card.ValueEnum._2, Card.ColorEnum.Diamond),
+                    new Card(Card.ValueEnum._1, Card.ColorEnum.Diamond),
+                    new Card(Card.ValueEnum.Queen, Card.ColorEnum.Club),
+                });
+            var nbCardInHand = playerADeck.Hand.Count;
+            gameState.PlayersStates[new MockUser(player1)] = playerADeck;
+            var game = new Game(gameState);
+            var val = game.PlayDeckWithDiscard(new MockUser(player1), Card.ColorEnum.Diamond, 0);
+            Assert.That(val.Item1, Is.EqualTo(13), "Sum");
+            Assert.That(gameState.PlayersStates[new MockUser(player1)].Hand.Count, Is.EqualTo(--nbCardInHand));
+            val = game.PlayDeckWithDiscard(new MockUser(player1), Card.ColorEnum.Diamond, 0);
+            Assert.That(val.Item1, Is.EqualTo(10), "Max");
+            Assert.That(gameState.PlayersStates[new MockUser(player1)].Hand.Count, Is.EqualTo(--nbCardInHand));
+        }
+
+        [Test]
+        public void TestHandPlayWithoutJoker()
+        {
+            // ARRANGE
+            const string gm = "EXPECTED_GAMEMASTER";
+            const string player1 = "PLAYER1";
+            var gameState = new GameState
+            {
+                GameMaster = new MockUser(gm)
+            };
+
+            var playerADeck = new PlayerState(new Deck(new[] {
+                new Card(Card.ValueEnum._2, Card.ColorEnum.Heart),
+                new Card(Card.ValueEnum.King, Card.ColorEnum.Spade),
+                new Card(Card.ValueEnum._3, Card.ColorEnum.Heart),
+                new Card(Card.ValueEnum._6, Card.ColorEnum.Diamond),
+                new Card(Card.ValueEnum._10, Card.ColorEnum.Heart),
+                new Card(Card.ValueEnum.King, Card.ColorEnum.Diamond),
+                new Card(Card.ValueEnum._6, Card.ColorEnum.Heart),
+                new Card(Card.ValueEnum.Jack, Card.ColorEnum.Diamond),
+            }),
+            new[]{
+                new Card(Card.ValueEnum._2, Card.ColorEnum.Club),
+                new Card(Card.ValueEnum.Jack, Card.ColorEnum.Club),
+                new Card(Card.ValueEnum.Queen, Card.ColorEnum.Spade),
+                new Card(Card.ValueEnum._8, Card.ColorEnum.Diamond),
+                new Card(Card.ValueEnum._7, Card.ColorEnum.Diamond),
+                new Card(Card.ValueEnum._2, Card.ColorEnum.Diamond),
+                new Card(Card.ValueEnum._1, Card.ColorEnum.Diamond),
+                new Card(Card.ValueEnum.Queen, Card.ColorEnum.Club),
+            });
+            var nbCard = playerADeck.Deck.Cards.Count;
+            gameState.PlayersStates[new MockUser(player1)] = playerADeck;
+            var game = new Game(gameState);
+
+            // ACT
+            var val = game.PlayHand(new MockUser(player1), Card.ColorEnum.Diamond, 0);
+            Assert.That(val.Item1, Is.EqualTo(2));
+            var playerState = gameState.PlayersStates[new MockUser(player1)];
+            Assert.That(playerState.Discard.Count, Is.EqualTo(1));
+            Assert.That(playerState.Deck.Cards.Count, Is.EqualTo(nbCard));
+
+            val = game.PlayHand(new MockUser(player1), Card.ColorEnum.Diamond, 0);
+            Assert.That(val.Item1, Is.EqualTo(3));
+
+            val = game.PlayHand(new MockUser(player1), Card.ColorEnum.Diamond, 0);
+            Assert.That(val.Item1, Is.EqualTo(5), "Only one figure reroll");
+
+            val = game.PlayHand(new MockUser(player1), Card.ColorEnum.Diamond, 0);
+            Assert.That(val.Item1, Is.EqualTo(8), "Should take the max of 8 diamond and 3 heart");
+
+            val = game.PlayHand(new MockUser(player1), Card.ColorEnum.Diamond, 0);
+            Assert.That(val.Item1, Is.EqualTo(13), "Sum");
+
+            val = game.PlayHand(new MockUser(player1), Card.ColorEnum.Diamond, 0);
+            Assert.That(val.Item1, Is.EqualTo(10), "Max");
+
+            val = game.PlayHand(new MockUser(player1), Card.ColorEnum.Diamond, 0);
+            Assert.That(val.Item1, Is.EqualTo(10), "King + 6 + 1");
+
+            val = game.PlayHand(new MockUser(player1), Card.ColorEnum.Diamond, 0);
+            Assert.That(val.Item1, Is.EqualTo(3), "Queen + Jack");
         }
     }
 }
